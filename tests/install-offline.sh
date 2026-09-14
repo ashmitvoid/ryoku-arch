@@ -173,4 +173,35 @@ while IFS=: read -r file lineno _; do
   fail "unguarded in-chroot call to $helper (a target whose baked desktop set predates it dies here): $file:$lineno"
 done < <(grep -rnE '^[^#]*run arch-chroot /mnt ryoku-[a-z-]+' "$root/installation/backend/lib/" || true)
 
+# ---- 7. CachyOS update repositories match the CPU ISA ------------------------
+(
+  run() { "$@"; }
+  append_file() { cat >>"$1"; }
+  log() { :; }
+  # shellcheck source=/dev/null
+  source "$root/installation/backend/lib/cachyos.sh"
+
+  baseline="$tmp/cachyos-baseline.conf"
+  printf '[options]\nArchitecture = auto\n\n[core]\nInclude = /etc/pacman.d/mirrorlist\n' >"$baseline"
+  ryoku_cachyos_repos "$baseline" 0
+  grep -qF '[cachyos]' "$baseline" || fail "baseline CachyOS config is missing [cachyos]"
+  ! grep -qE '^\[cachyos-(v3|core-v3|extra-v3)\]' "$baseline" || fail "baseline CachyOS config enabled v3 repos"
+  ! grep -qF 'x86_64_v3' "$baseline" || fail "baseline CachyOS config enabled x86_64_v3 packages"
+
+  v3="$tmp/cachyos-v3.conf"
+  printf '[options]\nArchitecture = auto\n\n[core]\nInclude = /etc/pacman.d/mirrorlist\n' >"$v3"
+  ryoku_cachyos_arch "$v3"
+  ryoku_cachyos_repos "$v3" 1
+  for repo in cachyos-v3 cachyos-core-v3 cachyos-extra-v3 cachyos; do
+    grep -qF "[$repo]" "$v3" || fail "v3 CachyOS config is missing [$repo]"
+  done
+  grep -qE '^Architecture[[:space:]]*=.*x86_64_v3' "$v3" || fail "v3 CachyOS config did not enable x86_64_v3 packages"
+
+  fallback="$tmp/cachyos-fallback.conf"
+  printf '[options]\nArchitecture = auto\n' >"$fallback"
+  ryoku_cachyos_repos "$fallback" 0
+  grep -qF '[cachyos]' "$fallback" || fail "baseline fallback is missing [cachyos]"
+  ! grep -qF '[cachyos-v3]' "$fallback" || fail "baseline fallback enabled v3 repos"
+)
+
 echo "install-offline: OK"
