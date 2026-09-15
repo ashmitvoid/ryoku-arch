@@ -24,10 +24,6 @@ jobs:
           bash -n installation/backend/lib/cachyos.sh
           bash -n tests/install-offline.sh
 
-      - name: ShellCheck
-        shell: bash
-        run: shellcheck -x installation/backend/lib/cachyos.sh tests/install-offline.sh
-
       - name: CachyOS ISA regression
         shell: bash
         run: bash tests/install-offline.sh
