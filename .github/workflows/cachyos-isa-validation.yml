@@ -1,0 +1,33 @@
+name: CachyOS ISA validation
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: CachyOS ISA repository regression
+    runs-on: ubuntu-latest
+    env:
+      RYOKU_COMPOSITOR: hyprland
+      RYOKU_COMPOSITOR_CONFIG_DIR: hypr
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Shell syntax
+        shell: bash
+        run: |
+          bash -n installation/backend/lib/cachyos.sh
+          bash -n tests/install-offline.sh
+
+      - name: ShellCheck
+        shell: bash
+        run: shellcheck -x installation/backend/lib/cachyos.sh tests/install-offline.sh
+
+      - name: CachyOS ISA regression
+        shell: bash
+        run: bash tests/install-offline.sh
