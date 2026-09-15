@@ -1,0 +1,52 @@
+name: CachyOS full backend validation
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  backend-unit:
+    name: Backend unit tests with compositor contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      RYOKU_COMPOSITOR: hyprland
+      RYOKU_COMPOSITOR_CONFIG_DIR: hypr
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Whole-disk wipe guard and partitioning plan
+        run: bash tests/install-partition-whole.sh
+      - name: Largest free-space sizing
+        run: bash tests/install-largest-free.sh
+      - name: Secure Boot preflight gate
+        run: bash tests/install-preflight.sh
+      - name: Clock-skew heal before the mirror re-probe
+        run: bash tests/install-clock-skew.sh
+      - name: Dry-run step/sentinel matrix
+        run: bash tests/install-dryrun-matrix.sh
+      - name: Offline install path
+        run: bash tests/install-offline.sh
+      - name: Nothing in the install can wait for input
+        run: bash tests/install-noninteractive.sh
+      - name: Initramfs hook masking
+        run: bash tests/install-hooks.sh
+      - name: Package builds resolve no dependencies over the network
+        run: bash tests/release-offline-builds.sh
+      - name: Offline repo package integrity
+        run: bash tests/offline-repo-integrity.sh
+      - name: Live installer display scale
+        run: bash tests/installer-session-scale.sh
+      - name: Limine boot-menu config handling
+        run: bash tests/limine-bootloader.sh
+      - name: Windows chainload entry
+        run: bash tests/limine-windows.sh
+      - name: Disk teardown before the pre-wipe
+        run: bash tests/install-disk-teardown.sh
+      - name: DNS preflight gate
+        run: bash tests/install-dns.sh
+      - name: ASUS Aura hardware detection
+        run: bash tests/asus-aura-detect.sh
