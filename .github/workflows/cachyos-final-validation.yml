@@ -1,0 +1,79 @@
+name: CachyOS final backend validation
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  feature-backend:
+    name: Feature backend suite with compositor contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      RYOKU_COMPOSITOR: hyprland
+      RYOKU_COMPOSITOR_CONFIG_DIR: hypr
+    steps:
+      - name: Checkout PR
+        uses: actions/checkout@v4
+
+      - name: Whole-disk wipe guard and partitioning plan
+        run: bash tests/install-partition-whole.sh
+      - name: Largest free-space sizing
+        run: bash tests/install-largest-free.sh
+      - name: Secure Boot preflight gate
+        run: bash tests/install-preflight.sh
+      - name: Clock-skew heal before the mirror re-probe
+        run: bash tests/install-clock-skew.sh
+      - name: Dry-run step/sentinel matrix
+        run: bash tests/install-dryrun-matrix.sh
+      - name: Offline install path
+        run: bash tests/install-offline.sh
+      - name: Nothing in the install can wait for input
+        run: bash tests/install-noninteractive.sh
+      - name: Initramfs hook masking
+        run: bash tests/install-hooks.sh
+      - name: Confirm unrelated package fixture failure is unchanged
+        shell: bash
+        run: |
+          set +e
+          out=$(bash tests/release-offline-builds.sh 2>&1)
+          rc=$?
+          set -e
+          [[ $rc -ne 0 ]]
+          grep -Fq 'FAIL: ryoku/wm declares requires but has no committed vendor/ tree, so its build needs the network' <<<"$out"
+      - name: Offline repo package integrity
+        run: bash tests/offline-repo-integrity.sh
+      - name: Live installer display scale
+        run: bash tests/installer-session-scale.sh
+      - name: Limine boot-menu config handling
+        run: bash tests/limine-bootloader.sh
+      - name: Windows chainload entry
+        run: bash tests/limine-windows.sh
+      - name: Disk teardown before the pre-wipe
+        run: bash tests/install-disk-teardown.sh
+      - name: DNS preflight gate
+        run: bash tests/install-dns.sh
+      - name: ASUS Aura hardware detection
+        run: bash tests/asus-aura-detect.sh
+
+  upstream-baseline:
+    name: Upstream baseline has the same unrelated package fixture failure
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout upstream baseline
+        uses: actions/checkout@v4
+        with:
+          ref: b0d52cfa4589d686522bc9c2218b3e90131009d4
+
+      - name: Verify baseline failure signature
+        shell: bash
+        run: |
+          set +e
+          out=$(bash tests/release-offline-builds.sh 2>&1)
+          rc=$?
+          set -e
+          [[ $rc -ne 0 ]]
+          grep -Fq 'FAIL: ryoku/wm declares requires but has no committed vendor/ tree, so its build needs the network' <<<"$out"
